@@ -1,0 +1,8 @@
+# Core dependencies for object detection on Jetson
+numpy>=1.21.0
+pyrealsense2>=2.53.0
+flask>=2.0.0
+requests>=2.25.0
+
+# Note: OpenCV installation on Jetson requires special setup
+# See setup_jetson.sh for proper installation
