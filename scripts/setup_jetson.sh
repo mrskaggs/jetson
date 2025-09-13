@@ -72,16 +72,27 @@ fi
 
 # Install RealSense SDK
 echo "Installing Intel RealSense SDK..."
-# Add Intel repository
-sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-key F6E65AC044F831AC80A06380C8B3A55A6F3EFCDE || sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-key F6E65AC044F831AC80A06380C8B3A55A6F3EFCDE
+# Add Intel repository (modern method)
+wget -qO- https://www.intelrealsense.com/ReleaseEngineering/realsense-debian-public-key | sudo apt-key add -
 sudo add-apt-repository "deb https://librealsense.intel.com/Debian/apt-repo $(lsb_release -cs) main" -u
 
-# Install RealSense packages
+# Update package list after adding repository
+sudo apt update
+
+# Install RealSense packages (using available packages)
+echo "Installing available RealSense packages..."
 sudo apt install -y \
     librealsense2-dev \
     librealsense2-utils \
-    librealsense2-dkms \
     librealsense2-udev-rules
+
+# Try to install DKMS package if available
+if apt-cache show librealsense2-dkms >/dev/null 2>&1; then
+    echo "Installing librealsense2-dkms..."
+    sudo apt install -y librealsense2-dkms
+else
+    echo "librealsense2-dkms not available in repository, skipping..."
+fi
 
 # Install Python dependencies
 echo "Installing Python dependencies..."
