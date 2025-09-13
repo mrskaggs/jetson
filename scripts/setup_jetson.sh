@@ -266,34 +266,32 @@ echo "Checking MobileNet SSD model files..."
 MODEL_DIR="models"
 mkdir -p $MODEL_DIR
 
-# Download prototxt file (using OpenCV's official repository)
+# Download prototxt file (try multiple sources)
 if [ ! -f "$MODEL_DIR/MobileNetSSD_deploy.prototxt" ] || [ ! -s "$MODEL_DIR/MobileNetSSD_deploy.prototxt" ]; then
     echo "Downloading MobileNetSSD_deploy.prototxt..."
-    wget -O $MODEL_DIR/MobileNetSSD_deploy.prototxt \
-        https://raw.githubusercontent.com/opencv/opencv/master/samples/data/MobileNetSSD_deploy.prototxt
 
-    # If OpenCV repository fails, try alternative source
-    if [ ! -f "$MODEL_DIR/MobileNetSSD_deploy.prototxt" ] || [ ! -s "$MODEL_DIR/MobileNetSSD_deploy.prototxt" ]; then
-        echo "OpenCV source failed, trying alternative prototxt source..."
-        wget -O $MODEL_DIR/MobileNetSSD_deploy.prototxt \
-            https://raw.githubusercontent.com/chuanqi305/MobileNet-SSD/master/MobileNetSSD_deploy.prototxt
-    fi
+    # Try OpenCV extra repository first
+    wget -O $MODEL_DIR/MobileNetSSD_deploy.prototxt \
+        https://raw.githubusercontent.com/opencv/opencv_extra/master/testdata/dnn/MobileNetSSD_deploy.prototxt 2>/dev/null || \
+    wget -O $MODEL_DIR/MobileNetSSD_deploy.prototxt \
+        https://raw.githubusercontent.com/chuanqi305/MobileNet-SSD/master/MobileNetSSD_deploy.prototxt 2>/dev/null || \
+    wget -O $MODEL_DIR/MobileNetSSD_deploy.prototxt \
+        https://raw.githubusercontent.com/PINTO0309/MobileNet-SSD-RealSense/master/deploy.prototxt 2>/dev/null
 else
     echo "MobileNetSSD_deploy.prototxt already exists"
 fi
 
-# Download caffemodel file (using OpenCV's official repository)
+# Download caffemodel file (try multiple sources)
 if [ ! -f "$MODEL_DIR/MobileNetSSD_deploy.caffemodel" ] || [ ! -s "$MODEL_DIR/MobileNetSSD_deploy.caffemodel" ]; then
     echo "Downloading MobileNetSSD_deploy.caffemodel..."
-    wget -O $MODEL_DIR/MobileNetSSD_deploy.caffemodel \
-        https://github.com/opencv/opencv_3rdparty/raw/dnn_samples_face_detector_20170830/res10_300x300_ssd_iter_140000.caffemodel
 
-    # If OpenCV caffemodel fails, try alternative sources
-    if [ ! -f "$MODEL_DIR/MobileNetSSD_deploy.caffemodel" ] || [ ! -s "$MODEL_DIR/MobileNetSSD_deploy.caffemodel" ]; then
-        echo "OpenCV caffemodel failed, trying alternative source..."
-        wget -O $MODEL_DIR/MobileNetSSD_deploy.caffemodel \
-            https://github.com/chuanqi305/MobileNet-SSD/raw/master/MobileNetSSD_deploy.caffemodel
-    fi
+    # Try multiple sources in order
+    wget -O $MODEL_DIR/MobileNetSSD_deploy.caffemodel \
+        https://github.com/chuanqi305/MobileNet-SSD/raw/master/MobileNetSSD_deploy.caffemodel 2>/dev/null || \
+    wget -O $MODEL_DIR/MobileNetSSD_deploy.caffemodel \
+        https://github.com/opencv/opencv_3rdparty/raw/dnn_samples_face_detector_20170830/res10_300x300_ssd_iter_140000.caffemodel 2>/dev/null || \
+    wget -O $MODEL_DIR/MobileNetSSD_deploy.caffemodel \
+        https://raw.githubusercontent.com/PINTO0309/MobileNet-SSD-RealSense/master/mobilenet_iter_73000.caffemodel 2>/dev/null
 else
     echo "MobileNetSSD_deploy.caffemodel already exists"
 fi
