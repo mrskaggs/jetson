@@ -117,7 +117,20 @@ fi
 # Install Python dependencies
 echo "Installing Python dependencies..."
 pip3 install --upgrade pip
-pip3 install -r requirements.txt
+
+# Find requirements.txt (check both script directory and parent directory)
+if [ -f "requirements.txt" ]; then
+    REQUIREMENTS_FILE="requirements.txt"
+elif [ -f "../requirements.txt" ]; then
+    REQUIREMENTS_FILE="../requirements.txt"
+else
+    echo "ERROR: requirements.txt not found in current directory or parent directory"
+    echo "Please ensure requirements.txt exists in the project root"
+    exit 1
+fi
+
+echo "Using requirements file: $REQUIREMENTS_FILE"
+pip3 install -r "$REQUIREMENTS_FILE"
 
 # Install Ollama for LLM integration
 echo "Installing Ollama..."
