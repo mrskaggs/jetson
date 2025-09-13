@@ -72,10 +72,29 @@ fi
 
 # Install RealSense SDK
 echo "Installing Intel RealSense SDK..."
-# Add Intel repository (modern method without deprecated apt-key)
-sudo mkdir -p /usr/share/keyrings
-wget -qO- https://www.intelrealsense.com/ReleaseEngineering/realsense-debian-public-key | sudo gpg --dearmor -o /usr/share/keyrings/librealsense.gpg
-echo "deb [signed-by=/usr/share/keyrings/librealsense.gpg] https://librealsense.intel.com/Debian/apt-repo $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/librealsense.list
+# Try multiple methods to add the repository
+echo "Attempting to add RealSense repository..."
+
+# Method 1: Try the official Intel method
+if wget -qO- https://www.intelrealsense.com/ReleaseEngineering/realsense-debian-public-key >/dev/null 2>&1; then
+    sudo mkdir -p /usr/share/keyrings
+    wget -qO- https://www.intelrealsense.com/ReleaseEngineering/realsense-debian-public-key | sudo gpg --dearmor -o /usr/share/keyrings/librealsense.gpg
+    echo "deb [signed-by=/usr/share/keyrings/librealsense.gpg] https://librealsense.intel.com/Debian/apt-repo $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/librealsense.list
+    echo "RealSense repository added successfully"
+else
+    echo "Primary key download failed, trying alternative method..."
+    # Method 2: Try alternative key location
+    if wget -qO- https://librealsense.intel.com/Debian/apt-key.gpg >/dev/null 2>&1; then
+        sudo mkdir -p /usr/share/keyrings
+        wget -qO- https://librealsense.intel.com/Debian/apt-key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/librealsense.gpg
+        echo "deb [signed-by=/usr/share/keyrings/librealsense.gpg] https://librealsense.intel.com/Debian/apt-repo $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/librealsense.list
+        echo "RealSense repository added with alternative key"
+    else
+        echo "Repository key download failed. Installing RealSense from Ubuntu repository instead..."
+        # Method 3: Skip custom repository and use Ubuntu packages
+        echo "Using Ubuntu's default RealSense packages (may be older version)"
+    fi
+fi
 
 # Update package list after adding repository
 sudo apt update
