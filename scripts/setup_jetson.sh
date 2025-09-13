@@ -353,7 +353,10 @@ import pyrealsense2 as rs
 print('All Python dependencies imported successfully!')
 print('OpenCV version:', cv2.__version__)
 print('NumPy version:', np.__version__)
-print('RealSense SDK version:', rs.__version__)
+try:
+    print('RealSense SDK version:', rs.__version__)
+except AttributeError:
+    print('RealSense SDK: pyrealsense2 imported successfully')
 "
 
 # Test RealSense connection
