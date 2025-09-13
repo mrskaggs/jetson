@@ -118,14 +118,25 @@ fi
 echo "Installing Python dependencies..."
 pip3 install --upgrade pip
 
-# Find requirements.txt (check both script directory and parent directory)
+# Find requirements.txt (check multiple possible locations)
 if [ -f "requirements.txt" ]; then
     REQUIREMENTS_FILE="requirements.txt"
 elif [ -f "../requirements.txt" ]; then
     REQUIREMENTS_FILE="../requirements.txt"
+elif [ -f "../config/requirements.txt" ]; then
+    REQUIREMENTS_FILE="../config/requirements.txt"
+elif [ -f "../../requirements.txt" ]; then
+    REQUIREMENTS_FILE="../../requirements.txt"
+elif [ -f "/home/$(whoami)/projects/jetson/requirements.txt" ]; then
+    REQUIREMENTS_FILE="/home/$(whoami)/projects/jetson/requirements.txt"
+elif [ -f "/home/$(whoami)/projects/jetson/config/requirements.txt" ]; then
+    REQUIREMENTS_FILE="/home/$(whoami)/projects/jetson/config/requirements.txt"
 else
-    echo "ERROR: requirements.txt not found in current directory or parent directory"
-    echo "Please ensure requirements.txt exists in the project root"
+    echo "ERROR: requirements.txt not found in expected locations"
+    echo "Searching for requirements.txt in common locations..."
+    find /home/$(whoami) -name "requirements.txt" -type f 2>/dev/null | head -5
+    echo ""
+    echo "Please ensure requirements.txt exists and the script is run from the correct directory"
     exit 1
 fi
 
