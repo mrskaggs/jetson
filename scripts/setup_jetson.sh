@@ -37,7 +37,7 @@ sudo apt install -y \
     gfortran \
     libgstreamer1.0-dev \
     libgstreamer-plugins-base1.0-dev \
-    libdc1394-22-dev \
+    libdc1394-dev \
     libavresample-dev \
     libgphoto2-dev \
     libgomp1
