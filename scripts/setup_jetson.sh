@@ -2,18 +2,35 @@
 
 # Setup script for Object Detection on NVIDIA Jetson Orin Nano Super with RealSense D435
 # This script installs all necessary dependencies and configures the environment
+# Can be run multiple times safely (idempotent)
 
 set -e
 
 echo "=== Object Detection Setup for Jetson Orin Nano Super ==="
 
-# Update system
-echo "Updating system packages..."
-sudo apt update && sudo apt upgrade -y
+# Function to check if package is installed
+is_package_installed() {
+    dpkg -l "$1" &> /dev/null
+}
 
-# Install system dependencies
-echo "Installing system dependencies..."
-sudo apt install -y \
+# Function to check if Python package is installed
+is_python_package_installed() {
+    python3 -c "import $1" &> /dev/null
+}
+
+# Update system (only if not recently updated)
+echo "Checking system packages..."
+if [ ! -f /var/cache/apt/pkgcache.bin ] || [ $(find /var/cache/apt/pkgcache.bin -mmin +60 2>/dev/null | wc -l) -gt 0 ]; then
+    echo "Updating system packages..."
+    sudo apt update && sudo apt upgrade -y
+else
+    echo "System packages recently updated, skipping..."
+fi
+
+# Install system dependencies (only missing ones)
+echo "Checking and installing system dependencies..."
+PACKAGES_TO_INSTALL=""
+for pkg in \
     build-essential \
     cmake \
     git \
@@ -40,11 +57,27 @@ sudo apt install -y \
     libdc1394-dev \
     libavresample-dev \
     libgphoto2-dev \
-    libgomp1
+    libgomp1; do
+    if ! is_package_installed "$pkg"; then
+        PACKAGES_TO_INSTALL="$PACKAGES_TO_INSTALL $pkg"
+    fi
+done
 
-# Install OpenCV with CUDA support
-echo "Installing OpenCV with CUDA support..."
-sudo apt install -y python3-opencv
+if [ -n "$PACKAGES_TO_INSTALL" ]; then
+    echo "Installing missing packages:$PACKAGES_TO_INSTALL"
+    sudo apt install -y $PACKAGES_TO_INSTALL
+else
+    echo "All system dependencies already installed"
+fi
+
+# Install OpenCV with CUDA support (if not already installed)
+echo "Checking OpenCV installation..."
+if ! is_package_installed "python3-opencv"; then
+    echo "Installing OpenCV with CUDA support..."
+    sudo apt install -y python3-opencv
+else
+    echo "OpenCV already installed"
+fi
 
 # Verify CUDA installation
 echo "Verifying CUDA installation..."
@@ -70,53 +103,105 @@ else
     fi
 fi
 
-# Install RealSense SDK
-echo "Installing Intel RealSense SDK..."
-# Try multiple methods to add the repository
-echo "Attempting to add RealSense repository..."
-
-# Method 1: Try the official Intel method
-if wget -qO- https://www.intelrealsense.com/ReleaseEngineering/realsense-debian-public-key >/dev/null 2>&1; then
-    sudo mkdir -p /usr/share/keyrings
-    wget -qO- https://www.intelrealsense.com/ReleaseEngineering/realsense-debian-public-key | sudo gpg --dearmor -o /usr/share/keyrings/librealsense.gpg
-    echo "deb [signed-by=/usr/share/keyrings/librealsense.gpg] https://librealsense.intel.com/Debian/apt-repo $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/librealsense.list
-    echo "RealSense repository added successfully"
-else
-    echo "Primary key download failed, trying alternative method..."
-    # Method 2: Try alternative key location
-    if wget -qO- https://librealsense.intel.com/Debian/apt-key.gpg >/dev/null 2>&1; then
-        sudo mkdir -p /usr/share/keyrings
-        wget -qO- https://librealsense.intel.com/Debian/apt-key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/librealsense.gpg
-        echo "deb [signed-by=/usr/share/keyrings/librealsense.gpg] https://librealsense.intel.com/Debian/apt-repo $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/librealsense.list
-        echo "RealSense repository added with alternative key"
-    else
-        echo "Repository key download failed. Installing RealSense from Ubuntu repository instead..."
-        # Method 3: Skip custom repository and use Ubuntu packages
-        echo "Using Ubuntu's default RealSense packages (may be older version)"
+# Install RealSense SDK (if not already installed)
+echo "Checking RealSense SDK installation..."
+REALSENSE_PACKAGES_INSTALLED=true
+for pkg in librealsense2-dev librealsense2-utils librealsense2-udev-rules; do
+    if ! is_package_installed "$pkg"; then
+        REALSENSE_PACKAGES_INSTALLED=false
+        break
     fi
-fi
+done
 
-# Update package list after adding repository
-sudo apt update
+if [ "$REALSENSE_PACKAGES_INSTALLED" = false ]; then
+    echo "Installing Intel RealSense SDK..."
+    # Try multiple methods to add the repository
+    echo "Attempting to add RealSense repository..."
 
-# Install RealSense packages (using available packages)
-echo "Installing available RealSense packages..."
-sudo apt install -y \
-    librealsense2-dev \
-    librealsense2-utils \
-    librealsense2-udev-rules
+    # Check if repository is already added
+    if [ ! -f /etc/apt/sources.list.d/librealsense.list ]; then
+        # Method 1: Try the official Intel method
+        if wget -qO- https://www.intelrealsense.com/ReleaseEngineering/realsense-debian-public-key >/dev/null 2>&1; then
+            sudo mkdir -p /usr/share/keyrings
+            wget -qO- https://www.intelrealsense.com/ReleaseEngineering/realsense-debian-public-key | sudo gpg --dearmor -o /usr/share/keyrings/librealsense.gpg
+            echo "deb [signed-by=/usr/share/keyrings/librealsense.gpg] https://librealsense.intel.com/Debian/apt-repo $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/librealsense.list
+            echo "RealSense repository added successfully"
+        else
+            echo "Primary key download failed, trying alternative method..."
+            # Method 2: Try alternative key location
+            if wget -qO- https://librealsense.intel.com/Debian/apt-key.gpg >/dev/null 2>&1; then
+                sudo mkdir -p /usr/share/keyrings
+                wget -qO- https://librealsense.intel.com/Debian/apt-key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/librealsense.gpg
+                echo "deb [signed-by=/usr/share/keyrings/librealsense.gpg] https://librealsense.intel.com/Debian/apt-repo $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/librealsense.list
+                echo "RealSense repository added with alternative key"
+            else
+                echo "Repository key download failed. Installing RealSense from Ubuntu repository instead..."
+                # Method 3: Skip custom repository and use Ubuntu packages
+                echo "Using Ubuntu's default RealSense packages (may be older version)"
+            fi
+        fi
 
-# Try to install DKMS package if available
-if apt-cache show librealsense2-dkms >/dev/null 2>&1; then
-    echo "Installing librealsense2-dkms..."
-    sudo apt install -y librealsense2-dkms
+        # Update package list after adding repository
+        sudo apt update
+    else
+        echo "RealSense repository already added"
+    fi
+
+    # Install RealSense packages (only missing ones)
+    echo "Installing available RealSense packages..."
+    PACKAGES_TO_INSTALL=""
+    for pkg in librealsense2-dev librealsense2-utils librealsense2-udev-rules; do
+        if ! is_package_installed "$pkg"; then
+            PACKAGES_TO_INSTALL="$PACKAGES_TO_INSTALL $pkg"
+        fi
+    done
+
+    if [ -n "$PACKAGES_TO_INSTALL" ]; then
+        sudo apt install -y $PACKAGES_TO_INSTALL
+    fi
+
+    # Try to install DKMS package if available and not already installed
+    if ! is_package_installed "librealsense2-dkms" && apt-cache show librealsense2-dkms >/dev/null 2>&1; then
+        echo "Installing librealsense2-dkms..."
+        sudo apt install -y librealsense2-dkms
+    elif is_package_installed "librealsense2-dkms"; then
+        echo "librealsense2-dkms already installed"
+    else
+        echo "librealsense2-dkms not available in repository, skipping..."
+    fi
 else
-    echo "librealsense2-dkms not available in repository, skipping..."
+    echo "RealSense SDK already installed"
 fi
 
 # Install Python dependencies
-echo "Installing Python dependencies..."
-pip3 install --upgrade pip
+echo "Checking Python dependencies..."
+
+# Upgrade pip if needed (check version)
+echo "Checking pip version..."
+CURRENT_PIP_VERSION=$(pip3 --version 2>/dev/null | sed 's/.*(\([0-9]\+\.[0-9]\+\.[0-9]\+\)).*/\1/' | head -1)
+if [ -n "$CURRENT_PIP_VERSION" ]; then
+    REQUIRED_PIP_VERSION="20.0.0"
+    if python3 -c "
+import sys
+version_parts = '$CURRENT_PIP_VERSION'.split('.')
+req_parts = '$REQUIRED_PIP_VERSION'.split('.')
+for i in range(3):
+    if int(version_parts[i]) < int(req_parts[i]):
+        print('upgrade')
+        sys.exit(0)
+    elif int(version_parts[i]) > int(req_parts[i]):
+        break
+print('current')
+" 2>/dev/null | grep -q "upgrade"; then
+        echo "Upgrading pip..."
+        pip3 install --upgrade pip
+    else
+        echo "Pip is up to date"
+    fi
+else
+    echo "Could not determine pip version, upgrading to be safe..."
+    pip3 install --upgrade pip
+fi
 
 # Find requirements.txt (check multiple possible locations)
 if [ -f "requirements.txt" ]; then
@@ -141,51 +226,76 @@ else
 fi
 
 echo "Using requirements file: $REQUIREMENTS_FILE"
+
+# Install Python requirements (pip will skip already installed packages)
+echo "Installing Python requirements..."
 pip3 install -r "$REQUIREMENTS_FILE"
 
-# Install Ollama for LLM integration
-echo "Installing Ollama..."
-curl -fsSL https://ollama.ai/install.sh | sh
+# Install Ollama for LLM integration (if not already installed)
+echo "Checking Ollama installation..."
+if ! command -v ollama &> /dev/null; then
+    echo "Installing Ollama..."
+    curl -fsSL https://ollama.ai/install.sh | sh
+else
+    echo "Ollama already installed"
+fi
 
-# Start Ollama service
-echo "Starting Ollama service..."
-sudo systemctl enable ollama
-sudo systemctl start ollama
+# Start Ollama service (if not already running)
+echo "Checking Ollama service..."
+if ! systemctl is-active --quiet ollama; then
+    echo "Starting Ollama service..."
+    sudo systemctl enable ollama
+    sudo systemctl start ollama
+    # Wait for Ollama to start
+    sleep 5
+else
+    echo "Ollama service already running"
+fi
 
-# Wait for Ollama to start
-sleep 5
+# Pull a lightweight model for testing (if not already available)
+echo "Checking for llama2 model..."
+if ! ollama list | grep -q "llama2"; then
+    echo "Pulling llama2 model for testing..."
+    ollama pull llama2
+else
+    echo "llama2 model already available"
+fi
 
-# Pull a lightweight model for testing
-echo "Pulling llama2 model for testing..."
-ollama pull llama2
-
-# Download MobileNet SSD model files
-echo "Downloading MobileNet SSD model files..."
+# Download MobileNet SSD model files (if not already present)
+echo "Checking MobileNet SSD model files..."
 MODEL_DIR="models"
 mkdir -p $MODEL_DIR
 
 # Download prototxt file (using OpenCV's official repository)
-echo "Downloading MobileNetSSD_deploy.prototxt..."
-wget -O $MODEL_DIR/MobileNetSSD_deploy.prototxt \
-    https://raw.githubusercontent.com/opencv/opencv/master/samples/data/MobileNetSSD_deploy.prototxt
-
-# If OpenCV repository fails, try alternative source
 if [ ! -f "$MODEL_DIR/MobileNetSSD_deploy.prototxt" ] || [ ! -s "$MODEL_DIR/MobileNetSSD_deploy.prototxt" ]; then
-    echo "OpenCV source failed, trying alternative prototxt source..."
+    echo "Downloading MobileNetSSD_deploy.prototxt..."
     wget -O $MODEL_DIR/MobileNetSSD_deploy.prototxt \
-        https://raw.githubusercontent.com/chuanqi305/MobileNet-SSD/master/MobileNetSSD_deploy.prototxt
+        https://raw.githubusercontent.com/opencv/opencv/master/samples/data/MobileNetSSD_deploy.prototxt
+
+    # If OpenCV repository fails, try alternative source
+    if [ ! -f "$MODEL_DIR/MobileNetSSD_deploy.prototxt" ] || [ ! -s "$MODEL_DIR/MobileNetSSD_deploy.prototxt" ]; then
+        echo "OpenCV source failed, trying alternative prototxt source..."
+        wget -O $MODEL_DIR/MobileNetSSD_deploy.prototxt \
+            https://raw.githubusercontent.com/chuanqi305/MobileNet-SSD/master/MobileNetSSD_deploy.prototxt
+    fi
+else
+    echo "MobileNetSSD_deploy.prototxt already exists"
 fi
 
 # Download caffemodel file (using OpenCV's official repository)
-echo "Downloading MobileNetSSD_deploy.caffemodel..."
-wget -O $MODEL_DIR/MobileNetSSD_deploy.caffemodel \
-    https://github.com/opencv/opencv_3rdparty/raw/dnn_samples_face_detector_20170830/res10_300x300_ssd_iter_140000.caffemodel
-
-# If OpenCV caffemodel fails, try alternative sources
 if [ ! -f "$MODEL_DIR/MobileNetSSD_deploy.caffemodel" ] || [ ! -s "$MODEL_DIR/MobileNetSSD_deploy.caffemodel" ]; then
-    echo "OpenCV caffemodel failed, trying alternative source..."
+    echo "Downloading MobileNetSSD_deploy.caffemodel..."
     wget -O $MODEL_DIR/MobileNetSSD_deploy.caffemodel \
-        https://github.com/chuanqi305/MobileNet-SSD/raw/master/MobileNetSSD_deploy.caffemodel
+        https://github.com/opencv/opencv_3rdparty/raw/dnn_samples_face_detector_20170830/res10_300x300_ssd_iter_140000.caffemodel
+
+    # If OpenCV caffemodel fails, try alternative sources
+    if [ ! -f "$MODEL_DIR/MobileNetSSD_deploy.caffemodel" ] || [ ! -s "$MODEL_DIR/MobileNetSSD_deploy.caffemodel" ]; then
+        echo "OpenCV caffemodel failed, trying alternative source..."
+        wget -O $MODEL_DIR/MobileNetSSD_deploy.caffemodel \
+            https://github.com/chuanqi305/MobileNet-SSD/raw/master/MobileNetSSD_deploy.caffemodel
+    fi
+else
+    echo "MobileNetSSD_deploy.caffemodel already exists"
 fi
 
 # Final fallback - create placeholder files if downloads fail
@@ -207,9 +317,14 @@ fi
 mkdir -p data
 
 # Set up udev rules for RealSense (if not already done)
-echo "Setting up udev rules for RealSense..."
-sudo cp /lib/udev/rules.d/60-librealsense2-udev-rules.rules /etc/udev/rules.d/
-sudo udevadm control --reload-rules && sudo udevadm trigger
+echo "Checking udev rules for RealSense..."
+if [ ! -f "/etc/udev/rules.d/60-librealsense2-udev-rules.rules" ]; then
+    echo "Setting up udev rules for RealSense..."
+    sudo cp /lib/udev/rules.d/60-librealsense2-udev-rules.rules /etc/udev/rules.d/
+    sudo udevadm control --reload-rules && sudo udevadm trigger
+else
+    echo "RealSense udev rules already configured"
+fi
 
 # Test installations
 echo "Testing installations..."
