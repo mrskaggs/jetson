@@ -136,7 +136,9 @@ logs/
 temp/
 tmp/
 data/
-models/
+models/*
+!models/MobileNetSSD_deploy.prototxt
+!models/MobileNetSSD_deploy.caffemodel
 checkpoints/
 
 # Memory bank is documentation, keep it tracked
