@@ -164,19 +164,43 @@ echo "Downloading MobileNet SSD model files..."
 MODEL_DIR="models"
 mkdir -p $MODEL_DIR
 
-# Download prototxt file
+# Download prototxt file (using OpenCV's official repository)
+echo "Downloading MobileNetSSD_deploy.prototxt..."
 wget -O $MODEL_DIR/MobileNetSSD_deploy.prototxt \
-    https://raw.githubusercontent.com/chuanqi305/MobileNet-SSD/master/MobileNetSSD_deploy.prototxt
+    https://raw.githubusercontent.com/opencv/opencv/master/samples/data/MobileNetSSD_deploy.prototxt
 
-# Download caffemodel file
+# If OpenCV repository fails, try alternative source
+if [ ! -f "$MODEL_DIR/MobileNetSSD_deploy.prototxt" ] || [ ! -s "$MODEL_DIR/MobileNetSSD_deploy.prototxt" ]; then
+    echo "OpenCV source failed, trying alternative prototxt source..."
+    wget -O $MODEL_DIR/MobileNetSSD_deploy.prototxt \
+        https://raw.githubusercontent.com/chuanqi305/MobileNet-SSD/master/MobileNetSSD_deploy.prototxt
+fi
+
+# Download caffemodel file (using OpenCV's official repository)
+echo "Downloading MobileNetSSD_deploy.caffemodel..."
 wget -O $MODEL_DIR/MobileNetSSD_deploy.caffemodel \
-    https://drive.google.com/uc?export=download&id=0B3gersZ2cHIxRm5PMWRoTkdHdHc
+    https://github.com/opencv/opencv_3rdparty/raw/dnn_samples_face_detector_20170830/res10_300x300_ssd_iter_140000.caffemodel
 
-# Alternative download for caffemodel (if Google Drive link doesn't work)
-if [ ! -f "$MODEL_DIR/MobileNetSSD_deploy.caffemodel" ]; then
-    echo "Primary download failed, trying alternative source..."
+# If OpenCV caffemodel fails, try alternative sources
+if [ ! -f "$MODEL_DIR/MobileNetSSD_deploy.caffemodel" ] || [ ! -s "$MODEL_DIR/MobileNetSSD_deploy.caffemodel" ]; then
+    echo "OpenCV caffemodel failed, trying alternative source..."
     wget -O $MODEL_DIR/MobileNetSSD_deploy.caffemodel \
         https://github.com/chuanqi305/MobileNet-SSD/raw/master/MobileNetSSD_deploy.caffemodel
+fi
+
+# Final fallback - create placeholder files if downloads fail
+if [ ! -f "$MODEL_DIR/MobileNetSSD_deploy.prototxt" ] || [ ! -s "$MODEL_DIR/MobileNetSSD_deploy.prototxt" ]; then
+    echo "WARNING: Could not download MobileNetSSD_deploy.prototxt"
+    echo "You may need to download it manually from the OpenCV repository"
+    echo "Creating placeholder file..."
+    touch $MODEL_DIR/MobileNetSSD_deploy.prototxt
+fi
+
+if [ ! -f "$MODEL_DIR/MobileNetSSD_deploy.caffemodel" ] || [ ! -s "$MODEL_DIR/MobileNetSSD_deploy.caffemodel" ]; then
+    echo "WARNING: Could not download MobileNetSSD_deploy.caffemodel"
+    echo "You may need to download it manually from a reliable source"
+    echo "Creating placeholder file..."
+    touch $MODEL_DIR/MobileNetSSD_deploy.caffemodel
 fi
 
 # Create data directory
