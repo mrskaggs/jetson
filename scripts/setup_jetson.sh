@@ -266,48 +266,54 @@ echo "Setting up MobileNet SSD model files..."
 MODEL_DIR="models"
 mkdir -p $MODEL_DIR
 
-# Copy prototxt file from repo if it exists
-if [ -f "models/MobileNetSSD_deploy.prototxt" ]; then
-    echo "Copying MobileNetSSD_deploy.prototxt from repository..."
-    cp models/MobileNetSSD_deploy.prototxt $MODEL_DIR/
-elif [ ! -f "$MODEL_DIR/MobileNetSSD_deploy.prototxt" ] || [ ! -s "$MODEL_DIR/MobileNetSSD_deploy.prototxt" ]; then
-    echo "Repository prototxt not found, downloading..."
+# Check if prototxt file exists and is valid
+if [ -f "$MODEL_DIR/MobileNetSSD_deploy.prototxt" ] && [ -s "$MODEL_DIR/MobileNetSSD_deploy.prototxt" ]; then
+    echo "MobileNetSSD_deploy.prototxt already exists"
+else
+    # Try to copy from repository first
+    if [ -f "models/MobileNetSSD_deploy.prototxt" ] && [ "models/MobileNetSSD_deploy.prototxt" != "$MODEL_DIR/MobileNetSSD_deploy.prototxt" ]; then
+        echo "Copying MobileNetSSD_deploy.prototxt from repository..."
+        cp models/MobileNetSSD_deploy.prototxt $MODEL_DIR/
+    else
+        echo "Downloading MobileNetSSD_deploy.prototxt..."
 
-    # Try multiple sources with timeout
-    if ! wget --timeout=10 -q -O $MODEL_DIR/MobileNetSSD_deploy.prototxt \
-        https://raw.githubusercontent.com/opencv/opencv_extra/master/testdata/dnn/MobileNetSSD_deploy.prototxt; then
-        echo "First source failed, trying alternative..."
+        # Try multiple sources with timeout
         if ! wget --timeout=10 -q -O $MODEL_DIR/MobileNetSSD_deploy.prototxt \
-            https://raw.githubusercontent.com/chuanqi305/MobileNet-SSD/master/MobileNetSSD_deploy.prototxt; then
-            echo "Second source failed, trying third source..."
-            wget --timeout=10 -q -O $MODEL_DIR/MobileNetSSD_deploy.prototxt \
-                https://raw.githubusercontent.com/PINTO0309/MobileNet-SSD-RealSense/master/deploy.prototxt
+            https://raw.githubusercontent.com/opencv/opencv_extra/master/testdata/dnn/MobileNetSSD_deploy.prototxt; then
+            echo "First source failed, trying alternative..."
+            if ! wget --timeout=10 -q -O $MODEL_DIR/MobileNetSSD_deploy.prototxt \
+                https://raw.githubusercontent.com/chuanqi305/MobileNet-SSD/master/MobileNetSSD_deploy.prototxt; then
+                echo "Second source failed, trying third source..."
+                wget --timeout=10 -q -O $MODEL_DIR/MobileNetSSD_deploy.prototxt \
+                    https://raw.githubusercontent.com/PINTO0309/MobileNet-SSD-RealSense/master/deploy.prototxt
+            fi
         fi
     fi
-else
-    echo "MobileNetSSD_deploy.prototxt already exists"
 fi
 
-# Copy caffemodel file from repo if it exists
-if [ -f "models/MobileNetSSD_deploy.caffemodel" ]; then
-    echo "Copying MobileNetSSD_deploy.caffemodel from repository..."
-    cp models/MobileNetSSD_deploy.caffemodel $MODEL_DIR/
-elif [ ! -f "$MODEL_DIR/MobileNetSSD_deploy.caffemodel" ] || [ ! -s "$MODEL_DIR/MobileNetSSD_deploy.caffemodel" ]; then
-    echo "Repository caffemodel not found, downloading..."
+# Check if caffemodel file exists and is valid
+if [ -f "$MODEL_DIR/MobileNetSSD_deploy.caffemodel" ] && [ -s "$MODEL_DIR/MobileNetSSD_deploy.caffemodel" ]; then
+    echo "MobileNetSSD_deploy.caffemodel already exists"
+else
+    # Try to copy from repository first
+    if [ -f "models/MobileNetSSD_deploy.caffemodel" ] && [ "models/MobileNetSSD_deploy.caffemodel" != "$MODEL_DIR/MobileNetSSD_deploy.caffemodel" ]; then
+        echo "Copying MobileNetSSD_deploy.caffemodel from repository..."
+        cp models/MobileNetSSD_deploy.caffemodel $MODEL_DIR/
+    else
+        echo "Downloading MobileNetSSD_deploy.caffemodel..."
 
-    # Try multiple sources with timeout
-    if ! wget --timeout=10 -q -O $MODEL_DIR/MobileNetSSD_deploy.caffemodel \
-        https://github.com/opencv/opencv_3rdparty/raw/dnn_samples_face_detector_20170830/res10_300x300_ssd_iter_140000.caffemodel; then
-        echo "First source failed, trying alternative..."
+        # Try multiple sources with timeout
         if ! wget --timeout=10 -q -O $MODEL_DIR/MobileNetSSD_deploy.caffemodel \
-            https://github.com/chuanqi305/MobileNet-SSD/raw/master/MobileNetSSD_deploy.caffemodel; then
-            echo "Second source failed, trying third source..."
-            wget --timeout=10 -q -O $MODEL_DIR/MobileNetSSD_deploy.caffemodel \
-                https://raw.githubusercontent.com/PINTO0309/MobileNet-SSD-RealSense/master/mobilenet_iter_73000.caffemodel
+            https://github.com/opencv/opencv_3rdparty/raw/dnn_samples_face_detector_20170830/res10_300x300_ssd_iter_140000.caffemodel; then
+            echo "First source failed, trying alternative..."
+            if ! wget --timeout=10 -q -O $MODEL_DIR/MobileNetSSD_deploy.caffemodel \
+                https://github.com/chuanqi305/MobileNet-SSD/raw/master/MobileNetSSD_deploy.caffemodel; then
+                echo "Second source failed, trying third source..."
+                wget --timeout=10 -q -O $MODEL_DIR/MobileNetSSD_deploy.caffemodel \
+                    https://raw.githubusercontent.com/PINTO0309/MobileNet-SSD-RealSense/master/mobilenet_iter_73000.caffemodel
+            fi
         fi
     fi
-else
-    echo "MobileNetSSD_deploy.caffemodel already exists"
 fi
 
 # Final fallback - create placeholder files if all sources fail
