@@ -72,9 +72,10 @@ fi
 
 # Install RealSense SDK
 echo "Installing Intel RealSense SDK..."
-# Add Intel repository (modern method)
-wget -qO- https://www.intelrealsense.com/ReleaseEngineering/realsense-debian-public-key | sudo apt-key add -
-sudo add-apt-repository "deb https://librealsense.intel.com/Debian/apt-repo $(lsb_release -cs) main" -u
+# Add Intel repository (modern method without deprecated apt-key)
+sudo mkdir -p /usr/share/keyrings
+wget -qO- https://www.intelrealsense.com/ReleaseEngineering/realsense-debian-public-key | sudo gpg --dearmor -o /usr/share/keyrings/librealsense.gpg
+echo "deb [signed-by=/usr/share/keyrings/librealsense.gpg] https://librealsense.intel.com/Debian/apt-repo $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/librealsense.list
 
 # Update package list after adding repository
 sudo apt update
