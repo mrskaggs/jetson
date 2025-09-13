@@ -48,10 +48,26 @@ sudo apt install -y python3-opencv
 
 # Verify CUDA installation
 echo "Verifying CUDA installation..."
-if ! command -v nvcc &> /dev/null; then
-    echo "CUDA not found. Installing CUDA toolkit..."
-    # Install CUDA toolkit for Jetson
-    sudo apt install -y nvidia-cuda-toolkit
+if command -v nvcc &> /dev/null; then
+    echo "CUDA found at: $(which nvcc)"
+    nvcc --version
+else
+    echo "CUDA nvcc not found in PATH. This is normal on Jetson devices."
+    echo "Checking for CUDA libraries..."
+    if [ -d "/usr/local/cuda" ]; then
+        echo "CUDA installation found at /usr/local/cuda"
+        export PATH="/usr/local/cuda/bin${PATH:+:${PATH}}"
+        export LD_LIBRARY_PATH="/usr/local/cuda/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+        echo "CUDA environment variables set"
+        if command -v nvcc &> /dev/null; then
+            echo "CUDA nvcc now available:"
+            nvcc --version
+        fi
+    else
+        echo "CUDA not found. On Jetson devices, CUDA should be pre-installed with JetPack."
+        echo "Please ensure JetPack is properly installed."
+        echo "Continuing without CUDA toolkit installation..."
+    fi
 fi
 
 # Install RealSense SDK
